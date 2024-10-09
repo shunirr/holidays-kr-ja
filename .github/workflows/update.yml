@@ -1,0 +1,42 @@
+name: Update KR Holidays
+permissions:
+  contents: write
+on:
+  # Monthly
+  schedule:
+    - cron: '0 0 1 * *'
+  # Debug
+  workflow_dispatch:
+jobs:
+  update-ics:
+    environment:
+      name: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+        with:
+          submodules: true
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          cd holidays-kr
+          git fetch origin
+          git reset --hard origin/main
+          cd ..
+          if [[ "$(git diff --name-only --exit-code)" ]]; then
+            git add .
+            git commit -m 'update submodule'
+            git push
+          fi
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - run: deno run --allow-net --allow-sys --allow-read --allow-write --allow-env ./app.ts
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+      - name: deploy to gh pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public

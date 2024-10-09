@@ -1,0 +1,3 @@
+[submodule "holidays-kr"]
+	path = holidays-kr
+	url = https://github.com/hyunbinseo/holidays-kr.git
