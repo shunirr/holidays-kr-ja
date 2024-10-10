@@ -20,7 +20,7 @@ const translateHoliday = async (originalKoHoliday: string): Promise<string> => {
   }
   let jaHoliday = translateKoJaMap[koHoliday]
   if (!jaHoliday) {
-    jaHoliday = await translateByDeepL(koHoliday)
+    jaHoliday = `${await translateByDeepL(koHoliday)}（${koHoliday}）`
   }
   if (substitute) {
     return `[振替休日] ${jaHoliday}`
