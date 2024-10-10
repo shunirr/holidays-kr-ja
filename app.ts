@@ -1,45 +1,46 @@
 import * as deepl from 'npm:deepl-node'
 
-const createKrHolidaysMap = async (): Promise<{ [ko: string]: string }> => {
-  const translator = new deepl.Translator(Deno.env.get('DEEPL_API_KEY'))
-  const holidays = JSON.parse(
-    Deno.readTextFileSync('./holidays-kr/public/basic.json')
+const translateKoJaMap: { [ko: string]: string } = JSON.parse(
+  Deno.readTextFileSync('./assets/holidays_ko_ja.json')
+)
+
+const translateByDeepL = async (text: string): Promise<string> => {
+  const translator = new deepl.Translator(
+    Deno.env.get('DEEPL_API_KEY') as string
   )
-
-  const holidaysMap = {}
-  for (const year of Object.keys(holidays)) {
-    for (const date of Object.keys(holidays[year])) {
-      for (const holiday of holidays[year][date]) {
-        holidaysMap[holiday] = ''
-      }
-    }
-  }
-  const holidaysList = Object.keys(holidaysMap)
-  const translated = await translator.translateText(
-    holidaysList.join('\n'),
-    null,
-    'ja'
-  )
-  const translatedList = translated.text.split('\n')
-
-  for (let i = 0; i < holidaysList.length; i++) {
-    holidaysMap[holidaysList[i]] = translatedList[i]
-  }
-
-  return holidaysMap
+  const translated = await translator.translateText(text, null, 'ja')
+  return translated.text
 }
 
-const holidaysMap = await createKrHolidaysMap()
+const translateHoliday = async (originalKoHoliday: string): Promise<string> => {
+  let koHoliday = originalKoHoliday
+  const substitute = originalKoHoliday.match(/^대체공휴일\((.*)\)$/)
+  if (substitute) {
+    koHoliday = substitute[1]
+  }
+  let jaHoliday = translateKoJaMap[koHoliday]
+  if (!jaHoliday) {
+    jaHoliday = await translateByDeepL(koHoliday)
+  }
+  if (substitute) {
+    return `[振替休日] ${jaHoliday}`
+  }
+  return jaHoliday
+}
+
 const originalIcs = Deno.readTextFileSync(
   './holidays-kr/public/basic.ics'
 ) as string
 const translatedIcs: string[] = []
-for (let line of originalIcs.split('\n')) {
+for (const line of originalIcs.split('\n')) {
   if (line.startsWith('SUMMARY:')) {
     const text = line.replace(/^SUMMARY:/, '')
-    translatedIcs.push('SUMMARY:' + holidaysMap[text])
+    const translated = await translateHoliday(text)
+    translatedIcs.push('SUMMARY:' + translated)
   } else if (line.startsWith('X-WR-CALNAME:')) {
-    translatedIcs.push('X-WR-CALNAME:KR Holidays')
+    const text = line.replace(/^X-WR-CALNAME:/, '')
+    const translated = await translateByDeepL(text)
+    translatedIcs.push('X-WR-CALNAME:' + translated)
   } else {
     translatedIcs.push(line)
   }
@@ -47,5 +48,6 @@ for (let line of originalIcs.split('\n')) {
 
 try {
   Deno.mkdirSync('public')
-} catch (e) {}
+} catch {}
+
 Deno.writeTextFileSync('./public/translated.ics', translatedIcs.join('\n'))
