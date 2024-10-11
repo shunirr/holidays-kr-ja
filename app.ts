@@ -1,5 +1,5 @@
 import * as deepl from 'npm:deepl-node'
-import ical from 'npm:ical-generator'
+import ical, { ICalEventClass, ICalEventTransparency } from 'npm:ical-generator'
 
 type HolidaysKoJaJson = {
   [ko: string]: string
@@ -51,8 +51,8 @@ const holidaysJson = JSON.parse(
 
 const calendar = ical({
   name: '韓国の祝日',
-  timezone: 'Asia/Tokyo',
 })
+calendar.timezone('Asia/Tokyo')
 
 for (const year of Object.keys(holidaysJson)) {
   const currentMonthHolidays = holidaysJson[year]
@@ -64,6 +64,8 @@ for (const year of Object.keys(holidaysJson)) {
         start: new Date(date),
         allDay: true,
         summary: translated,
+        class: ICalEventClass.PUBLIC,
+        transparency: ICalEventTransparency.TRANSPARENT,
       })
     }
   }
