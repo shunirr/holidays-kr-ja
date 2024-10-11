@@ -9,5 +9,5 @@ This generates a `.ics` file that registers South Korean holidays in Japanese.
 ### How to process
 
 1. Get holidays from the [hyunbinseo/holidays-kr](https://github.com/hyunbinseo/holidays-kr) repo using a submodule.
-2. Translate the `SUMMARY` section in `public/basic.ics` to Japanese using the DeepL Translate API.
+2. Translate the holidays name in `public/basic.json` to Japanese using the DeepL Translate API or predefined `assets/holidays_ko_ja.json` file.
 3. Generate `translated.ics` and deploy it to GitHub Pages.

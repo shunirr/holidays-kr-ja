@@ -1,8 +1,15 @@
 import * as deepl from 'npm:deepl-node'
+import ical from 'npm:ical-generator'
 
-const translateKoJaMap: { [ko: string]: string } = JSON.parse(
-  Deno.readTextFileSync('./assets/holidays_ko_ja.json')
-)
+type HolidaysKoJaJson = {
+  [ko: string]: string
+}
+
+type BasicHolidaysJson = {
+  [year: string]: {
+    [date: string]: [string]
+  }
+}
 
 const translateByDeepL = async (text: string): Promise<string> => {
   const translator = new deepl.Translator(
@@ -12,42 +19,60 @@ const translateByDeepL = async (text: string): Promise<string> => {
   return translated.text
 }
 
-const translateHoliday = async (originalKoHoliday: string): Promise<string> => {
+const translateHoliday = async (
+  translateKoJaMap: HolidaysKoJaJson,
+  originalKoHoliday: string
+): Promise<string> => {
   let koHoliday = originalKoHoliday
-  const substitute = originalKoHoliday.match(/^대체공휴일\((.*)\)$/)
-  if (substitute) {
-    koHoliday = substitute[1]
+  const detectSubstitute = originalKoHoliday.match(/^대체공휴일\((.*)\)$/)
+  if (detectSubstitute) {
+    koHoliday = detectSubstitute[1]
   }
+
   let jaHoliday = translateKoJaMap[koHoliday]
   if (!jaHoliday) {
     jaHoliday = `${await translateByDeepL(koHoliday)}（${koHoliday}）`
   }
-  if (substitute) {
+
+  if (detectSubstitute) {
     return `[振替休日] ${jaHoliday}`
   }
+
   return jaHoliday
 }
 
-const originalIcs = Deno.readTextFileSync(
-  './holidays-kr/public/basic.ics'
-) as string
-const translatedIcs: string[] = []
-for (const line of originalIcs.split('\n')) {
-  if (line.startsWith('SUMMARY:')) {
-    const text = line.replace(/^SUMMARY:/, '')
-    const translated = await translateHoliday(text)
-    translatedIcs.push('SUMMARY:' + translated)
-  } else if (line.startsWith('X-WR-CALNAME:')) {
-    const text = line.replace(/^X-WR-CALNAME:/, '')
-    const translated = await translateByDeepL(text)
-    translatedIcs.push('X-WR-CALNAME:' + translated)
-  } else {
-    translatedIcs.push(line)
+const holidaysKoJaJson = JSON.parse(
+  Deno.readTextFileSync('./assets/holidays_ko_ja.json')
+) as HolidaysKoJaJson
+
+const holidaysJson = JSON.parse(
+  Deno.readTextFileSync('./holidays-kr/public/basic.json')
+) as BasicHolidaysJson
+
+const calendar = ical({
+  name: '韓国の祝日',
+  timezone: 'Asia/Tokyo',
+})
+
+for (const year of Object.keys(holidaysJson)) {
+  const currentMonthHolidays = holidaysJson[year]
+  for (const date of Object.keys(currentMonthHolidays)) {
+    const todayHolidays = currentMonthHolidays[date]
+    for (const todayHoliday of todayHolidays) {
+      const translated = await translateHoliday(holidaysKoJaJson, todayHoliday)
+      calendar.createEvent({
+        start: new Date(date),
+        allDay: true,
+        summary: translated,
+      })
+    }
   }
 }
+
+const translatedIcs = calendar.toString()
 
 try {
   Deno.mkdirSync('public')
 } catch {}
 
-Deno.writeTextFileSync('./public/translated.ics', translatedIcs.join('\n'))
+Deno.writeTextFileSync('./public/translated.ics', translatedIcs)
