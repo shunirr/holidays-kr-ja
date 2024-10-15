@@ -52,7 +52,13 @@ const holidaysJson = JSON.parse(
 const calendar = ical({
   name: '韓国の祝日',
 })
-calendar.timezone('Asia/Tokyo')
+calendar.timezone('Asia/Seoul')
+calendar.description('https://shunirr.github.io/holidays-kr-ja/')
+calendar.prodId({
+  company: 'shunirr.github.io',
+  product: 'holidays-kr-ja',
+  language: 'JA',
+})
 
 for (const year of Object.keys(holidaysJson)) {
   const currentMonthHolidays = holidaysJson[year]
