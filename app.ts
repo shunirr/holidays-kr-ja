@@ -1,3 +1,5 @@
+import { crypto } from 'jsr:@std/crypto'
+import { encodeHex } from 'jsr:@std/encoding/hex'
 import * as deepl from 'npm:deepl-node'
 
 const y2024 = JSON.parse(
@@ -57,6 +59,12 @@ for (const year of years) {
     for (const todayHoliday of todayHolidays) {
       const formattedDateString = date.replace(/-/g, '')
       const translated = await translateHoliday(todayHoliday)
+      const uid = encodeHex(
+        await crypto.subtle.digest(
+          'SHA-1',
+          new TextEncoder().encode(`${formattedDateString}-${todayHoliday}`)
+        )
+      )
       calendar.splice(
         calendar.length,
         0,
@@ -64,7 +72,7 @@ for (const year of years) {
           'BEGIN:VEVENT',
           `DTSTART;VALUE=DATE:${formattedDateString}`,
           `DTSTAMP:${dtstamp}`,
-          `UID:${formattedDateString}-${dtstamp}`,
+          `UID:${uid}`,
           `SUMMARY:${translated}`,
           'CLASS:PUBLIC',
           'TRANSP:TRANSPARENT',
